@@ -17,6 +17,16 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+pub mod http {
+    #[cfg(debug_assertions)]
+    const _GRAMMAR: &'static str = include_str!("grammars/http.pest");
+
+    /// HTTP parser.
+    #[derive(Parser)]
+    #[grammar = "grammars/http.pest"]
+    pub struct HttpParser;
+}
+
 pub mod json {
     /// JSON parser.
     #[derive(Parser)]
