@@ -1,0 +1,118 @@
+// pest. The Elegant Parser
+// Copyright (c) 2018 Dragoș Tiselice
+//
+// Licensed under the Apache License, Version 2.0
+// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT
+// license <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. All files in the project carrying such notice may not be copied,
+// modified, or distributed except according to those terms.
+
+// HTTP 1.1 spec as defined https://tools.ietf.org/html/rfc2616. This only implements a subset of the spec.
+
+http             = { SOI ~ http_message ~ EOI }
+http_message     = { request }
+
+request          = { request_line ~ (header ~ CRLF)* ~ CRLF ~ message_body? }
+request_line     = { method ~ SP ~ request_uri ~ SP ~ http_version ~ CRLF }
+
+method           = @{ "OPTIONS" | "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "TRACE" | "CONNECT" | extension_method }
+extension_method = @{ token }
+
+request_uri      = @{ "*" | absoluteURI | abs_path | authority }
+
+absoluteURI      = { scheme ~ ":" ~ (hier_part | opaque_part) }
+hier_part        = { (net_path | abs_path) ~ ("?" ~ query)? }
+opaque_part      = { uric_no_slash ~ uric* }
+
+header           = { token ~ ":" ~ field_value? }
+field_value      = { (TEXT | LWS)* }
+
+message_body     = { OCTET* }
+
+
+// Protocol Parameters
+http_version     = @{ "HTTP/" ~ DIGIT+ ~ "." ~ DIGIT+ }
+http_url         = @{ "http:" ~ "//" ~ host ~ (":" ~ port)? ~ (abs_path ~ ("?" ~ query)?)? }
+
+host             = { hostname | IPv4address }
+hostname         = { (domainlabel ~ ".")* ~ toplabel ~ "."? }
+domainlabel      = { ALPHANUMERIC | ALPHANUMERIC ~ (ALPHANUMERIC | "-")* ~ ALPHANUMERIC }
+toplabel         = { ALPHA | ALPHA ~ (ALPHANUMERIC | "-")* ~ ALPHANUMERIC }
+IPv4address      = { DIGIT+ ~ "." ~ DIGIT+ ~ "." ~ DIGIT+ ~ "." ~ DIGIT+ }
+
+port             = { DIGIT* }
+
+scheme           = { ALPHA ~ ( ALPHA | DIGIT | "+" | "-" | "." )* }
+authority        = { server | reg_name }
+reg_name         = { (unreserved | escaped | "$" | "," | ";" | ":" | "@" | "&" | "=" | "+")+ }
+server           = { ((userinfo ~ "@")? ~ hostport)? }
+userinfo         = { (unreserved | escaped | ";" | ":" | "&" | "=" | "+" | "$" | ",")* }
+hostport         = { host ~ (":" ~ port)? }
+
+net_path         = {"//" ~ authority ~ abs_path? }
+abs_path         = { "/" ~ path_segments }
+path_segments    = { segment ~ ("/" ~ segment)* }
+segment          = { pchar* ~ (";" ~ param)* }
+param            = { pchar* }
+pchar            = { unreserved | escaped | ":" | "@" | "&" | "=" | "+" | "$" | "," }
+
+query            = { uric* }
+uric             = { reserved | unreserved | escaped }
+uric_no_slash    = { unreserved | escaped | ";" | "?" | ":" | "@" | "&" | "=" | "+" | "$" | "," }
+
+reserved         = { ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" | "$" | "," }
+unreserved       = { ALPHANUMERIC | mark }
+escaped          = { "%" ~ HEX ~ HEX }
+mark             = { "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")" }
+
+// Date Formats
+http_date        = @{ rfc1123_date | rfc850_date | asctime_date }
+rfc1123_date     = @{ wkday ~ "," ~ SP ~ date1 ~ SP ~ time ~ SP ~ "GMT" }
+rfc850_date      = @{ weekday ~ "," ~ SP ~ date2 ~ SP ~ time ~ SP ~ "GMT" }
+asctime_date     = @{ wkday ~ SP ~ date3 ~ SP ~ time ~ SP ~ DIGIT{4} }
+date1            = { DIGIT{2} ~ SP ~ month ~ SP ~ DIGIT{4} }
+date2            = { DIGIT{2} ~ "-" ~ month ~ "-" ~ DIGIT{2} }
+date3            = { month ~ SP ~ (DIGIT{2} | (SP ~ DIGIT)) }
+time             = { DIGIT{2} ~ ":" ~ DIGIT{2} ~ ":" ~ DIGIT{2} }
+wkday            = { "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" }
+weekday          = { "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday" }
+month            = { "Jan" | "Feb" | "Mar" | "Apr" | "May" | "Jun" | "Jul" | "Aug" | "Sep" | "Oct" | "Nov" | "Dec" }
+
+delta_seconds      = { DIGIT+ }
+charset            = { token }
+content_coding     = { token }
+
+transfer_coding    = { "chunked" | transfer_extension }
+transfer_extension = { token ~ (";" ~ parameter)* }
+parameter          = { attribute ~ "=" ~ value }
+attribute          = { token }
+value              = { token | quoted_string }
+
+
+// Basic rules
+token              = @{ (!(CTL | separators) ~ CHAR)+ }
+separators         = _{ "(" | ")" | "<" | ">" | "@" | "," | ";" | ":" | "\\" | "\"" | "/" | "[" | "]" |
+                        "?" | "=" | "{" | "}" | SP | HT }
+comment            = { "(" ~ (ctext | quoted_pair | comment)* ~ ")" }
+ctext              = { !("(" | ")") ~ TEXT }
+quoted_string      = { QUOTE ~ (qdtext | quoted_pair)* ~ QUOTE }
+qdtext             = { !QUOTE ~ TEXT }
+quoted_pair        = { "\\" ~ CHAR }
+
+OCTET              = _{ ANY }  // This is currently not quite right. It should match any single byte.
+CHAR               = _{ ASCII }
+UPALPHA            = _{ ALPHA_UPPER }
+LOALPHA            = _{ ALPHA_LOWER }
+CTL                = _{ '\x00'..'\x1f' | "\x7f" }
+CR                 = _{ "\r" }
+LF                 = _{ "\n" }
+SP                 = _{ " " }
+HT                 = _{ "\t" }
+QUOTE              = _{ "\"" }  // <"> rule
+
+CRLF               = _{ CR ~ LF }
+LWS                = _{ CRLF? ~ (SP | HT)+ }
+TEXT               = _{ (!CTL ~ OCTET)+ }
+HEX                = _{ HEX_DIGIT }
+
+
