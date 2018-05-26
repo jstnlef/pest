@@ -10,7 +10,7 @@
 // HTTP 1.1 spec as defined https://tools.ietf.org/html/rfc2616. This only implements a very small (mostly inaccurate)
 // subset of the request message spec.
 
-http             = { SOI ~ request ~ EOI }
+http             = { SOI ~ request+ ~ EOI }
 
 request          = { request_line ~ (header ~ CRLF)* ~ CRLF ~ message_body? }
 request_line     = ${ method ~ SP ~ request_uri ~ SP ~ http_version ~ CRLF }
@@ -20,7 +20,7 @@ method           = @{ "GET" | "OPTIONS" | "HEAD" | "POST" | "PUT" | "DELETE" | "
 request_uri      = @{ (!SP ~ ASCII)+ }
 header           = { token ~ ":" ~ (!CRLF ~ ASCII)* }
 http_version     = @{ "HTTP/" ~ DIGIT+ ~ "." ~ DIGIT+ }
-message_body     = { ANY* }
+message_body     = { (!CRLF ~ ANY)* ~ CRLF{2} }
 
 // Basic rules
 token            = @{ (!non_tokens ~ ASCII)+ }
